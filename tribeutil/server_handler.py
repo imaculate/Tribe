@@ -54,12 +54,15 @@ class TokenHandler:
         self._secret = a_secret
 
     def get_access_token(self):
-        ACCESS_URI = ('https://www.facebook.com/dialog/'
+        ACCESS_URI = ('https://www.facebook.com/v2.10/dialog/'
             + 'oauth?client_id=' +self._id + '&redirect_uri='
-            + REDIRECT_URL + "&scope=xxxxx")
+            + REDIRECT_URL + "&scope=public_profile")
 
         open_new(ACCESS_URI)
         httpServer = HTTPServer(('localhost', 8080),
                 lambda request, address, server: HTTPServerHandler(request, address, server, self._id, self._secret))
         httpServer.handle_request()
         return httpServer.access_token
+
+if __name__ == '__main__':
+    print("running server")

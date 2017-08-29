@@ -1,19 +1,11 @@
 import csv
 import re
-from datetime import datetime, time
+import sys
+import time
+from datetime import datetime
+from datetime import timedelta
 from urllib.request import Request, urlopen
-
 from pandas import json
-from Tribe.server_handler import TokenHandler
-
-token_handler = TokenHandler("","")
-access_token = token_handler.get_access_token()
-
-group_id = "1384252878496456"
-
-# input date formatted as YYYY-MM-DD
-since_date = "2017-08-27"
-until_date = "2017-08-28"
 
 def request_until_succeed(url):
     req = Request(url)
@@ -27,7 +19,7 @@ def request_until_succeed(url):
             print(e)
             time.sleep(5)
 
-            print("Error for URL {}: {}".format(url, datetime.datetime.now()))
+            print("Error for URL {}: {}".format(url, datetime.now()))
             print("Retrying.")
 
     return response.read()
@@ -37,18 +29,19 @@ def request_until_succeed(url):
 
 def unicode_decode(text):
     try:
-        return text.encode('utf-8').decode()
+        return text.encode('utf-8', errors='ignore').decode()
     except UnicodeDecodeError:
-        return text.encode('utf-8')
+        print("impossible decode"+ text )
+        return text.encode('utf-8', errors='ignore')
 
 
 def getFacebookPageFeedUrl(base_url):
 
     # Construct the URL string; see http://stackoverflow.com/a/37239851 for
     # Reactions parameters
-    fields = "&fields=message,link,created_time,type,name,id," + \
-        "comments.limit(0).summary(true),shares,reactions" + \
-        ".limit(0).summary(true),from"
+    fields = "&fields=message,link,created_time,status_type,name,id," + \
+        "comments.limit(5).summary(true),shares,reactions" + \
+        ".limit(5).summary(true),from"
     url = base_url + fields
 
     return url
@@ -60,7 +53,8 @@ def getReactionsForStatuses(base_url):
     reactions_dict = {}   # dict of {status_id: tuple<6>}
 
     for reaction_type in reaction_types:
-        fields = "&fields=reactions.type({}).limit(0).summary(total_count)".format(
+        print(reaction_type)
+        fields = "&fields=reactions.type({}).limit(5).summary(total_count)".format(
             reaction_type.upper())
 
         url = base_url + fields
@@ -91,7 +85,7 @@ def processFacebookPageFeedStatus(status):
     # so must check for existence first
 
     status_id = status['id']
-    status_type = status['type']
+    status_type = '' if 'type' not in status else status['type']
 
     status_message = '' if 'message' not in status else \
         unicode_decode(status['message'])
@@ -103,10 +97,10 @@ def processFacebookPageFeedStatus(status):
     # Time needs special care since a) it's in UTC and
     # b) it's not easy to use in statistical programs.
 
-    status_published = datetime.datetime.strptime(
+    status_published = datetime.strptime(
         status['created_time'], '%Y-%m-%dT%H:%M:%S+0000')
     status_published = status_published + \
-        datetime.timedelta(hours=-5)  # EST
+        timedelta(hours=-5)  # EST
     status_published = status_published.strftime(
         '%Y-%m-%d %H:%M:%S')  # best time format for spreadsheet programs
     status_author = unicode_decode(status['from']['name'])
@@ -124,7 +118,7 @@ def processFacebookPageFeedStatus(status):
 
 
 def scrapeFacebookPageFeedStatus(group_id, access_token, since_date, until_date):
-    with open('{}_facebook_statuses.csv'.format(group_id), 'w') as file:
+    with open('{}_facebook_statuses.csv'.format(group_id), 'w', encoding='utf-8') as file:
         w = csv.writer(file)
         w.writerow(["status_id", "status_message", "status_author", "link_name",
                     "status_type", "status_link", "status_published",
@@ -134,12 +128,12 @@ def scrapeFacebookPageFeedStatus(group_id, access_token, since_date, until_date)
 
         has_next_page = True
         num_processed = 0   # keep a count on how many we've processed
-        scrape_starttime = datetime.datetime.now()
+        scrape_starttime = datetime.now()
 
         # /feed endpoint pagenates througn an `until` and `paging` parameters
         until = ''
         paging = ''
-        base = "https://graph.facebook.com/v2.9"
+        base = "https://graph.facebook.com/v2.10"
         node = "/{}/feed".format(group_id)
         parameters = "/?limit={}&access_token={}".format(100, access_token)
         since = "&since={}".format(since_date) if since_date \
@@ -152,30 +146,38 @@ def scrapeFacebookPageFeedStatus(group_id, access_token, since_date, until_date)
 
         while has_next_page:
             until = '' if until is '' else "&until={}".format(until)
-            paging = '' if until is '' else "&__paging_token={}".format(paging)
+            paging = '' if paging is '' else "&__paging_token={}".format(paging)
             base_url = base + node + parameters + since + until + paging
 
+            print("base url "+ base_url)
             url = getFacebookPageFeedUrl(base_url)
             statuses = json.loads(request_until_succeed(url))
-            reactions = getReactionsForStatuses(base_url)
+            #reactions = getReactionsForStatuses(base_url)
 
             for status in statuses['data']:
-
                 # Ensure it is a status with the expected metadata
-                if 'reactions' in status:
-                    status_data = processFacebookPageFeedStatus(status)
-                    reactions_data = reactions[status_data[0]]
+                status_data = processFacebookPageFeedStatus(status)
+                print("status_data"+ str(status_data))
 
-                    # calculate thankful/pride through algebra
-                    num_special = status_data[7] - sum(reactions_data)
-                    w.writerow(status_data + reactions_data + (num_special,))
+
+
+                reactions_data = ''
+                num_special = 0
+                # if 'reactions' in status:
+                #
+                #     reactions_data = reactions[status_data[0]]
+                #     print(str(reactions_data))
+                #     # calculate thankful/pride through algebra
+                #     num_special = status_data[7] - sum(reactions_data)
+
+                w.writerow(', '.join(map(str,status_data)))
 
                 # output progress occasionally to make sure code is not
                 # stalling
                 num_processed += 1
                 if num_processed % 100 == 0:
                     print("{} Statuses Processed: {}".format
-                          (num_processed, datetime.datetime.now()))
+                          (num_processed, datetime.now()))
 
             # if there is no next page, we're done.
             if 'paging' in statuses:
@@ -188,8 +190,8 @@ def scrapeFacebookPageFeedStatus(group_id, access_token, since_date, until_date)
                 has_next_page = False
 
         print("\nDone!\n{} Statuses Processed in {}".format(
-              num_processed, datetime.datetime.now() - scrape_starttime))
+              num_processed, datetime.now() - scrape_starttime))
 
 
 if __name__ == '__main__':
-    scrapeFacebookPageFeedStatus(group_id, access_token, since_date, until_date)
+    print("scrapper")
