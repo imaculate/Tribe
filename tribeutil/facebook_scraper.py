@@ -4,8 +4,11 @@ import sys
 import time
 from datetime import datetime
 from datetime import timedelta
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from pandas import json
+import traceback
+
 
 def request_until_succeed(url):
     req = Request(url)
@@ -116,6 +119,19 @@ def processFacebookPageFeedStatus(status):
     return (status_id, status_message, status_author, link_name, status_type,
             status_link, status_published, num_reactions, num_comments, num_shares)
 
+def is_group_public(access_token, group_id):
+    url = "https://graph.facebook.com/v2.10/" + group_id + "?access_token={}".format(access_token)+ "&fields=privacy"
+    req = Request(url)
+    print(url)
+    try:
+        response = urlopen(req)
+        if response.getcode() == 200:
+            group_info = json.loads(response.read())
+            return group_info['privacy'] == 'OPEN'
+    except Exception as e:
+        #traceback.print_tb(e.__traceback__)
+        return False #assuming all errors will be due to permission errors
+
 
 def scrapeFacebookPageFeedStatus(group_id, access_token, since_date, until_date):
     with open('{}_facebook_statuses.csv'.format(group_id), 'w', encoding='utf-8') as file:
@@ -191,7 +207,6 @@ def scrapeFacebookPageFeedStatus(group_id, access_token, since_date, until_date)
 
         print("\nDone!\n{} Statuses Processed in {}".format(
               num_processed, datetime.now() - scrape_starttime))
-
 
 if __name__ == '__main__':
     print("scrapper")
