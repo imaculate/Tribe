@@ -9,12 +9,9 @@ python -m main.py
 To-do:
 --code refactoring, remove print statements, improve documentation to md, add links
 --scrutinize error from public group check :permission code = 100
-2)Proper printing of tuples and important fields
-3)Make retrival of reactions an option
-4) Rename csv file with timestamp
-5) Proper formatting of emojis
-6) Option of dump or csv
+1)Compile to exe
+2) format comments csv
 
-7) Future stretch goal after login is possible - private groups after users sign in, group id from group name
+3) Future stretch goal after login is possible - private groups after users sign in, group id from group name
 
 

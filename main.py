@@ -14,6 +14,7 @@ from tribeutil.facebook_scraper import scrapeFacebookPageFeedStatus
 from tribeutil.facebook_scraper import is_group_public
 
 from tribeutil.server_handler import TokenHandler
+valid_formats = ['json', 'csv']
 NUM_ID_TRIALS = 3
 
 def get_access_token():
@@ -40,6 +41,7 @@ def parse_cli_parameters():
     parser.add_argument('-g', action="store", default='')
     parser.add_argument('-s', action="store", default='')
     parser.add_argument('-e', action="store", default='')
+    parser.add_argument('-f', action="store", default='')
 
     results = parser.parse_args()
 
@@ -59,7 +61,10 @@ def parse_cli_parameters():
     if valid_date_format(results.s):
         end_date = results.e
 
-    return (group_id, start_date, end_date)
+    format = 'json'
+    if results.f in valid_formats:
+        format = results.f
+    return (group_id, start_date, end_date, format)
 
 
 def converse():
@@ -84,16 +89,18 @@ def converse():
     end_date = input("You would like updates until what date (YYYY-MM-DD)?\nThe default is today")
     if not valid_date_format(end_date):
         end_date = '{:%Y-%m-%d}'.format(datetime.utcnow().date())
-
-    return (group_id, start_date, end_date)
+    format = input('What format for the data? Default is json(json/csv)')
+    if format not in valid_formats:
+        format = 'json'
+    return (group_id, start_date, end_date, format)
 
 
 if __name__ == '__main__':
     this = sys.modules[__name__]
     this.access_token = get_access_token()
     if(len(sys.argv) > 1):
-        (group_id, since_date, until_date) = parse_cli_parameters()
+        (group_id, since_date, until_date, format) = parse_cli_parameters()
     else:
-        (group_id, since_date, until_date) = converse()
-    scrapeFacebookPageFeedStatus(group_id, this.access_token, since_date, until_date)
+        (group_id, since_date, until_date, format) = converse()
+    scrapeFacebookPageFeedStatus(group_id, this.access_token, since_date, until_date, format)
 
