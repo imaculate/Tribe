@@ -1,14 +1,10 @@
 import csv
 import re
-import sys
 import time
 from datetime import datetime
 from datetime import timedelta
-from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 from pandas import json
-import traceback
-
 
 def request_until_succeed(url):
     req = Request(url)
@@ -34,7 +30,6 @@ def unicode_decode(text):
     try:
         return text.encode('utf-8', errors='ignore').decode()
     except UnicodeDecodeError:
-        print("impossible decode"+ text )
         return text.encode('utf-8', errors='ignore')
 
 
@@ -121,7 +116,6 @@ def processFacebookPageFeedStatus(status):
 def is_group_public(access_token, group_id):
     url = "https://graph.facebook.com/v2.10/" + group_id + "?access_token={}".format(access_token)+ "&fields=privacy"
     req = Request(url)
-    print(url)
     try:
         response = urlopen(req)
         if response.getcode() == 200:

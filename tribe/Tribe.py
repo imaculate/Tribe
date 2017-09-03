@@ -5,20 +5,20 @@ from datetime import timedelta
 from dateutil import parser
 import argparse
 
-PACKAGE_PARENT = '..'
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+#PACKAGE_PARENT = '..'
+#SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
+#sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 
-from tribeutil.facebook_scraper import scrapeFacebookPageFeedStatus
-from tribeutil.facebook_scraper import is_group_public
+from tribe.tribeutil.facebook_scraper import scrapeFacebookPageFeedStatus
+from tribe.tribeutil.facebook_scraper import is_group_public
 
-from tribeutil.server_handler import TokenHandler
 valid_formats = ['json', 'csv']
 NUM_ID_TRIALS = 3
+this = sys.modules[__name__]
 
 def get_access_token():
-    f = open('app_secrets', 'r')
+    f = open(os.path.join(os.path.dirname(__file__),'app_secrets'), 'r')
     app_id = f.readline().strip("\n")
     app_secret = f.readline().strip("\n")
     return app_id + "|"+ app_secret
@@ -94,9 +94,7 @@ def converse():
         format = 'json'
     return (group_id, start_date, end_date, format)
 
-
-if __name__ == '__main__':
-    this = sys.modules[__name__]
+def get_posts():
     this.access_token = get_access_token()
     if(len(sys.argv) > 1):
         (group_id, since_date, until_date, format) = parse_cli_parameters()
